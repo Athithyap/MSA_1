@@ -16,11 +16,11 @@
                 <th>Quantity</th>
                 <th>Sub Total</th>
             </tr>
-            {% for form1,form2 in x %}
-                <td>{{form1.medicine_id}}</td>
+            {% for form1,form2,form3,form4 in x %}
+                <td>{{form1}}</td>
                 <td>{{form2}}</td>
-                <td>{{form1.quantity}}</td>
-                <td>{{form_med.unit_sell_price}}</td>
+                <td>{{form3}}</td>
+                <td>{{form4}}</td>
             </tr>
             {% endfor %}
            

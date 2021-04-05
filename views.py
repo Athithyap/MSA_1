@@ -268,7 +268,10 @@ def Selling(request):
             customer_number = formsale.cleaned_data['customer_number']
             sell_price = 0
             i=0
+            form_medid = []
             form_med = []
+            form_quan = []
+            form_sub=[]
             for form_sale in form_saleset: 
                 medicine_id = form_sale.cleaned_data['medicine_id']
                 quantity = form_sale.cleaned_data['quantity']
@@ -289,15 +292,17 @@ def Selling(request):
                 f.save()
                 f1.append(f)
                 med = Medicine.objects.get(medicine_id=medicine_id)
+                sub = quantity * med.unit_sell_price
                 sell_price = sell_price + quantity * med.unit_sell_price
                 
                 form_med.append(med.generic_name)
-                i = i + 1
+                form_medid.append(medicine_id)
+                form_quan.append(quantity)
+                form_sub.append(sub)
             
-            x = zip(form_saleset , form_med)
+            x = zip(form_medid , form_med , form_quan , form_sub)
             b = Bill(customer_name =customer_name,customer_number=customer_number,amount = sell_price,)
             b.save()
-            allsales = Sales.objects.all()
             context ={
                 'formsale': formsale,
                 'x' : x,
