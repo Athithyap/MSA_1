@@ -1,10 +1,8 @@
 from django import forms
 from django.forms import widgets
+from django.forms import modelformset_factory
 from .models import Employee, Medicine, Vendor, Stock, Sales,Bill
 from django.contrib.auth.models import User
-from bootstrap_datepicker_plus import DatePickerInput
-
-from django.forms import modelformset_factory
 
 GENDER_CHOICES = (
     ('Male', 'Male'),
@@ -29,14 +27,11 @@ class EmployeeData(forms.ModelForm):
     first_name = forms.CharField(max_length=50, widget=forms.TextInput(attrs={'class':'form-control', 'placeholder':'eg.Abhijeet', 'required':'true'}), label='First Name', required=True)
     middle_name = forms.CharField(max_length=50, widget=forms.TextInput(attrs={'class':'form-control', 'placeholder':'eg.Kamal', 'required':'false'}), label='Middle Name', required=False)
     last_name = forms.CharField(max_length=50, widget=forms.TextInput(attrs={'class':'form-control', 'placeholder':'eg.Choudhary', 'required':'true'}), label='Last Name', required=True)
-    date_of_birth = forms.DateField(label='DOB',widget=forms.TextInput(attrs=
-                                {
-                                    'class':'datepicker'
-                                }), required=True)
+    date_of_birth = forms.DateField(widget=forms.DateInput(attrs={'class':'form-control', 'required':'true'}), label='DOB', required=True)
     gender = forms.ChoiceField(choices=GENDER_CHOICES, widget=forms.Select(attrs={'class':'form', 'required':'true'}), label='Gender', required=True)
     phone = forms.IntegerField(widget=forms.NumberInput(attrs={'class':'form-control', 'placeholder':'Enter mobile number', 'required':'true'}), label='Mobile Number', required=True)
     address = forms.CharField(max_length=200, widget=forms.TextInput(attrs={'class':'form-control', 'placeholder':'Address here(200 characters)', 'required':'true'}), label='Address', required=True)
-    is_admin = forms.BooleanField(label='Admin', required=False)
+    is_admin = forms.BooleanField(label='Admin', required=True)
     password = forms.CharField(max_length=20,widget=forms.PasswordInput(attrs={'class': 'form-control', 'required': 'true', }),required=True,label='Password')
     confirm_password = forms.CharField(max_length=20,widget=forms.PasswordInput(attrs={'class': 'form-control', 'required': 'true', }),required=True,label='Confirm Password')
 
@@ -53,10 +48,6 @@ class EmployeeData(forms.ModelForm):
     class Meta:
         model = Employee
         fields = ['first_name', 'middle_name', 'last_name', 'date_of_birth', 'gender', 'phone', 'address', 'is_admin', 'password', 'confirm_password']
-       
-        widget = {
-            'date_of_birth':DatePickerInput
-        }
 
 class MedicineData(forms.ModelForm):
     trade_name = forms.CharField(max_length=50, widget=forms.TextInput(attrs={'class':'form-control', 'placeholder':'Trade Name', 'required':'true'}), label='Trade Name', required=True)
@@ -88,10 +79,6 @@ class StockData(forms.ModelForm):
     class Meta:
         model = Stock
         fields = ['medicine_id', 'batch_id', 'quantity', 'expiry_date']
-
-class RevenueProfit(forms.Form):
-    from_date = forms.DateField(widget=forms.DateInput(attrs={'class':'form-control', 'required':'true'}), label='From:', required=True)
-    to_date = forms.DateField(widget=forms.DateInput(attrs={'class':'form-control', 'required':'true'}), label='To:', required=True)
     
 class SalesData(forms.ModelForm):
     customer_name = forms.CharField(max_length=50, widget=forms.TextInput(attrs={'class':'form-control', 'placeholder':'Customer Name', 'required':'true'}), label='Customer Name', required=True)
@@ -102,36 +89,22 @@ class SalesData(forms.ModelForm):
     class Meta:
         model = Bill
         fields = ['customer_name','customer_number']
-        labels = {
-
-            'customer_name': 'Customer Name',
-            'customer_number': 'Customer Number'
-        }
-        widgets ={
-
-            'customer_name':forms.TextInput(attrs={
-                'class':'form-control',
-                'placeholder':'Customer Name', 'required':'true'}),
-
-            #'customer_number':forms.TextInput(attrs={
-                #'class':'form-control',
-                #'placeholder':'Customer Number', 'required':'true'})
-        }
        
 
 SalesDataSet = modelformset_factory(
-
     Sales,
     fields = ['medicine_id', 'quantity'],
     extra = 1,
-
-    widgets={
-
-        'medicine_id':forms.TextInput(attrs={
-            'class':'form-control',
-            'placeholder':'medicine ID', 'required':'true'}),
-        #'quantity':forms.NumberInput(attrs={
-            #'class':'form-control',
-            #'placeholder':'No. of units', 'required':'true'})
-    }
+    #widgets={
+    #    'medicine-id':forms.TextInput(attrs={'class':"form-control m-input", 'placeholder':"medicine ID", 'autocomplete':"off"}),
+    #    'quantity':forms.NumberInput(attrs={'class':'form-control', 'placeholder':'No. of units', 'required':'true'})
+    #},
+    #labels={
+    #    'medicine-id':'Medicine ID',
+    #    'quantity':'Quantity',
+    #},
+    #required={
+     #   'medicine-id':True,
+      #  'quantity':True,
+    #}
 )
