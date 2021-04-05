@@ -1,0 +1,29 @@
+{% extends 'app/loginhome.html' %}
+
+{% load static %}
+{% block content %}
+<div class = "container">
+    <link rel="stylesheet" href="{% static 'css/login_style.css' %}">
+    <h1  style ="text-align:center; "> All Vendor Details</h1>
+    <table style="width:100%"></table>
+        <tr>
+            <th>Vendor Name</th>
+            <th>Email</th>
+            <th>Mobile</th>
+            <th>Address</th>
+            <th>Vendor ID</th>
+            <th>Medicine IDs</th>
+        </tr>
+        {% for vendor in vendors %}
+        <tr>
+            <td>{{vendor.vendor_name}}</td>
+            <td>{{vendor.email}}</td>
+            <td>{{vendor.mobile}}</td>
+            <td>{{vendor.address}}</td>
+            <td>{{vendor.vendor_id}}</td>
+            <td>{{vendor.medicine_ids}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}

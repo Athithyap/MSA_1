@@ -1,0 +1,65 @@
+{% extends 'app/loginhome.html' %}
+{% load crispy_forms_tags %}
+{% load static %}
+{% block content %}
+
+<!--link rel="stylesheet" href="//maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+<script src="//ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script-->
+
+    <div class="container"style="max-width: 700px;">
+
+        <!--div class="text-center" style="margin: 20px 0px 20px 0px;">
+            <a href="https://shouts.dev/" target="_blank"><img src="https://i.imgur.com/hHZjfUq.png"></a><br>
+            <span class="text-secondary">Add or Remove Input Fields Dynamically using jQuery</span>
+        </div-->
+        <link rel="stylesheet" href="{% static 'css/login_style.css' %}">
+        <h1  style ="text-align:center; "> Sales</h1>
+    <form id="form-container" method="POST">
+       
+        {% csrf_token %}
+        {{formsale|crispy}}
+
+    {{ form_saleset.management_form }}
+    {% for form in form_saleset %}
+                <div class='bird-form'>
+                {{form.as_p}}
+                </div>
+    {% endfor %}
+    <button id = "addRow"  type= "button" class="btn btn-info"> Add row </button>
+
+
+<div class="row spacer">
+    <div class="col-4 offset-2">
+        <button type="submit" class="btn btn-success">Register</button>
+    </div-->
+</div>
+</form>
+{% if err %}<p>{{err}}</p>{%endif%}
+</div>
+
+
+
+<script >
+    let birdForm = document.querySelectorAll(".bird-form")
+    let container = document.querySelector("#form-container")
+    let addButton = document.querySelector("#addRow")
+    let totalForms = document.querySelector("#id_form-TOTAL_FORMS")
+
+    let formNum = birdForm.length-1
+    addButton.addEventListener('click', addForm)
+
+    function addForm(e){
+            e.preventDefault()
+
+            let newForm = birdForm[0].cloneNode(true)
+            let formRegex = RegExp(`form-(\\d){1}-`,'g')
+
+            formNum++
+            newForm.innerHTML = newForm.innerHTML.replace(formRegex, `form-${formNum}-`)
+            container.insertBefore(newForm, addButton)
+            
+            totalForms.setAttribute('value', `${formNum+1}`)
+        }
+</script>
+
+{% endblock %}

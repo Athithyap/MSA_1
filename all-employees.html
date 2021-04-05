@@ -1,0 +1,29 @@
+{% extends 'app/loginhome.html' %}
+
+{% load static %}
+{% block content %}
+<div class = "container">
+    <link rel="stylesheet" href="{% static 'css/login_style.css' %}">
+    <h1  style ="text-align:center; "> All Employees Details</h1>
+    <table style="width:100%">
+        <tr>
+            <th>Name</th>
+            <th>DOB</th>
+            <th>Gender</th>
+            <th>Phone</th>
+            <th>Address</th>
+            <th>Admin</th>
+        </tr>
+        {% for employee in employees %}
+        <tr>
+            <td>{{employee.first_name}}</td>
+            <td>{{employee.date_of_birth}}</td>
+            <td>{{employee.gender}}</td>
+            <td>{{employee.phone}}</td>
+            <td>{{employee.address}}</td>
+            <td>{{employee.is_admin}}</td>
+        </tr>
+        {% endfor %}
+    </table>
+</div>
+{% endblock %}
