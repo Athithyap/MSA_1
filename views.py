@@ -7,11 +7,15 @@ from django.template.loader import render_to_string
 from django.http import HttpResponse
 from weasyprint import HTML
 import tempfile
+from django.shortcuts import get_object_or_404
 
 
 from django.contrib.auth.decorators import login_required
 
 import datetime
+
+
+
 
 def HomePageafterlogin(request):
     return render(request, 'app/index.html')
@@ -37,13 +41,19 @@ def CreateUser(request):
     # }
     # return render(request, 'registration/create-user.html', context)
     if request.method != 'POST':
-        form_user = CreateEmployee()
-        form_data = EmployeeData()
-        context = {
-            'form_data': form_data,
-            'form_user': form_user
-        }
-        return render(request, 'app/create-user.html', context)
+        if request.session["is_admin"]:
+            form_user = CreateEmployee()
+            form_data = EmployeeData()
+            context = {
+                'form_data': form_data,
+                'form_user': form_user
+            }
+            return render(request, 'app/create-user.html', context)
+        else:
+            context = {
+                'err': "Only admins can access this page"
+            }
+            return render(request, 'registration/create-user.html', context)
     else:
         user_form = CreateEmployee(request.POST)
         employee_data_form = EmployeeData(request.POST)
@@ -230,21 +240,25 @@ def AddStock(request):
                 expiry_date = formstock.cleaned_data['expiry_date']
                 vendor_id = formstock.cleaned_data['vendor_id']
 
-                #try:
-                 #   Medicine.objects.get(medicine_id=medicine_id)
-                #except:
-                 #   form_stock = StockData()
-                  #  formset = StockDataSet()
-                   # err = medicine_id + " is not valid"
-                #    context ={
-                 #   'form_stock': form_stock,
-                  #  'formset' : formset,
-                  #  'err': err
-                   # }
-                   # return render(request, 'app/add-stock.html', context)
+                try:
+                    Medicine.objects.get(medicine_id=medicine_id)
+                except:
+                    form_stock = StockData()
+                    formset = StockDataSet(queryset=Stock.objects.none())
+                    err = medicine_id + " is not valid"
+                    context ={
+                    'form_stock': form_stock,
+                    'formset' : formset,
+                    'err': err
+                    }
+                    return render(request, 'app/add-stock.html', context)
 
                 s = Stock(medicine_id=medicine_id, batch_id=batch_id, quantity=quantity, expiry_date=expiry_date , vendor_id = vendor_id)
                 s.save()
+
+                ms = MedicineStock.objects.get(medicine_id=medicine_id)
+                ms.stock += quantity
+                ms.save()
             
             form_stock = StockData()
             formset = StockDataSet(queryset=Stock.objects.none())
@@ -261,6 +275,7 @@ def AddStock(request):
                 'err': err
             }
             return render(request, 'app/add-stock.html', context)
+    
 
 @login_required(login_url='/login/', redirect_field_name=None)
 def TableMedicines(request):
@@ -280,11 +295,19 @@ def TableVendors(request):
 
 @login_required(login_url='/login/', redirect_field_name=None)
 def TableEmployees(request):
-    employees = Employee.objects.all()
-    context = {
-        'employees': employees
-    }
-    return render(request, 'app/all-employees.html', context)
+    if request.session["is_admin"]:
+        employees = Employee.objects.all()
+        context = {
+            'employees': employees
+        }
+        return render(request, 'app/all-employees.html', context)
+    else:
+        context = {
+            'err': "Only admins can access this page"
+        }
+        return render(request, 'app/all-employees.html', context)
+    
+    
 
 
 @login_required(login_url='/login/', redirect_field_name=None)   
@@ -300,7 +323,12 @@ def TableExpired(request):
             ven_id = stock.vendor_id
             batch_id = stock.batch_id
             ms = MedicineStock.objects.get(medicine_id = stock.medicine_id)
-            available_stock = ms.stock - stock.quantity
+
+            available_stock = ms.stock -stock.quantity
+            print(ms.stock)
+            print(stock.quantity)
+            print(med_id)
+
             v = Vendor.objects.get(vendor_id = stock.vendor_id)
             ven_email = v.email
             ven_address = v.address
@@ -331,13 +359,27 @@ def TablePurchase(request):
             med_id = med.medicine_id
             stock = med.stock
             threshold = med.threshold
-            v = MedicineToVendor.objects.filter(medicine_id=med_id).first()
-            if v != None:
+            try:
+                v = MedicineToVendor.objects.filter(medicine_id=med_id).first()
                 ven_id = v.vendor_id
                 v_info = Vendor.objects.get(vendor_id=ven_id)
                 number = v_info.mobile
                 email = v_info.email
                 address = v_info.address
+                purchase.append({
+                    'med_id':med_id,
+                    'stock':stock,
+                    'threshold':threshold,
+                    'ven_id':ven_id,
+                    'number':number,
+                    'email':email,
+                    'address':address
+                })
+            except:
+                ven_id="No vendor"
+                number = ""
+                email = ""
+                address = ""
                 purchase.append({
                     'med_id':med_id,
                     'stock':stock,
@@ -359,8 +401,10 @@ def RevenueProfitView(request):
     if request.method == 'POST':
         form = RevenueProfit(request.POST)
         if  form.is_valid():
-            from_date = form.cleaned_data['from_date']
-            to_date = form.cleaned_data['to_date']
+            from_date = datetime.datetime.strptime(form.data['from_date'], '%Y-%m-%d').date()
+            to_date = datetime.datetime.strptime(form.data['to_date'], '%Y-%m-%d').date()
+            print(from_date)
+
 
         if to_date <= from_date:
             context={
@@ -373,18 +417,34 @@ def RevenueProfitView(request):
         expired = ExpiredMedicines.objects.all()
 
         revenue = profit = 0
+        print(revenue)
+        print(profit)
         try:
             for sale in sales:
-                if sale.date > from_date and sale.date < to_date:
-                    sp = Medicine.objects.get(medicine_id=sale.medicine_id)
-                    cp = Medicine.objects.get(medicine_id=sale.medicine_id)
-                    revenue += sp*sale.quantity
-                    profit += (sp-cp)*sale.quantity
+                if sale.date > from_date and sale.date <= to_date:
+                    print("************")
+                    print(sale.date)
+                    print(from_date)
+                    print(to_date)
+                
+                    print("************")
+                    print(sale.date)
+                    print("************")
+                    print(sale.medicine_id)
+                    m= Medicine.objects.get(medicine_id=sale.medicine_id)
+                    print("************")
+                    revenue += (m.unit_sell_price)*sale.quantity
+                    profit += (m.unit_sell_price-m.unit_purchase_price)*sale.quantity
             
+            print("sasi")
             for med in expired:
-                if med.expiry_date > from_date and med.expiry_date < to_date:
-                    cp = Medicine.objects.get(medicine_id=med.medicine_id)
-                    profit -= med.quantity*cp
+                print(type(from_date))
+                print(type(to_date))
+                print(type(med.expiry_date))
+                if med.expiry_date > from_date and med.expiry_date <= to_date:
+                    print("123456")
+                    m = Medicine.objects.get(medicine_id=med.medicine_id)
+                    profit -= med.quantity*(m.unit_purchase_price)
 
             form = RevenueProfit()
             context={
@@ -400,8 +460,14 @@ def RevenueProfitView(request):
             }
             return render(request, 'app/revenue-profit.html', context)
     else:
-        form = RevenueProfit()
-        return render(request, 'app/revenue-profit.html', {'form':form})
+        if request.session["is_admin"]:
+            form = RevenueProfit()
+            return render(request, 'app/revenue-profit.html', {'form':form})
+        else:
+            context = {
+                'err': "Only admins can access this page"
+            }
+            return render(request, 'app/revenue-profit.html', context)
 
 
 
@@ -606,7 +672,6 @@ def EmployeeLogin(request):
         return render(request, 'registration/login.html', {})
 
 
-
 @login_required(login_url='/login/', redirect_field_name=None)
 def Selling(request):
     template = 'app/sales.html'
@@ -621,6 +686,7 @@ def Selling(request):
         return render(request, 'app/sales.html' , context)
         
     else:
+
         form_saleset = SalesDataSet(request.POST)
         formsale = SalesData(request.POST)
         if form_saleset.is_valid() and formsale.is_valid():
@@ -648,17 +714,13 @@ def Selling(request):
                     }
                     return render(request, 'app/sales.html', context)
                 
-                allstock = Stock.objects.all()
-                tquantity = 0
-
-                for stocks in allstock:
-                    if ( stocks.medicine_id == medicine_id):
-                        tquantity = tquantity + stocks.quantity
-                    
-                if( tquantity >= quantity):
+                stock = Stock.objects.get(medicine_id=medicine_id)
+                if( stock.quantity >= quantity):
                     pass
 
-                            
+                    
+                   
+                        
                 else:
                     form_sale = SalesDataSet()
                     context={
@@ -670,27 +732,17 @@ def Selling(request):
                 
                 
                 #stock = Stock.objects.get(medicine_id=medicine_id)
-                req_quantity = quantity
-                allstock = Stock.objects.all()
-
-                for stocks in allstock:
-                    if ( stocks.medicine_id == medicine_id):
-                        if(req_quantity > 0):
-                            if(req_quantity >= stocks.quantity):
-                                req_quantity = req_quantity - stocks.quantity
-                                stocks.quantity = 0
-                                stocks.delete()
-                            else:
-                                stocks.quantity = stocks.quantity - req_quantity
-                                req_quantity = 0
-                                stocks.save()
+                stock.quantity = stock.quantity - quantity
+                stock.save()
 
 
                 f1 = []
-                f = Sales(medicine_id=medicine_id ,quantity = quantity,date =date)
-                #f.save()
-                f1.append(f)
                 
+                k = Bill.objects.all()
+                a =len(k)
+                f = Sales(medicine_id=medicine_id ,quantity = quantity,date =date,sale_id = a)
+                f.save()
+                f1.append(f)
                 med = Medicine.objects.get(medicine_id=medicine_id)
                 sub = quantity * med.unit_sell_price
                 sell_price = sell_price + quantity * med.unit_sell_price
@@ -702,19 +754,25 @@ def Selling(request):
                 form_medid.append(medicine_id)
                 form_quan.append(quantity)
                 form_sub.append(sub)
+
             
             x = zip(form_medid , form_med , form_quan , form_sub)
-            b = Bill(customer_name =customer_name,customer_number=customer_number,amount = sell_price)
+           
+
+            b = Bill(customer_name =customer_name,customer_number=customer_number,amount = sell_price,bill_id =a)
             b.save()
+
+  
             context ={
                 'formsale': formsale,
                 'x' : x,
                 #'allsales' : allsales,
                 'Sales':f,
                 #'Sales': f1,
-                'Bill' : b,             
+                'Bill' : b, 
+                      
             }
-            return render(request,'app/bill.html' , context)
+            return render(request,'app/bill.html', context)
 
         else:
             formsale = SalesData()
@@ -774,7 +832,7 @@ def EditMedicine(request, id):
             m.unit_purchase_price = unit_purchase_price
             m.save()
 
-            return redirect('/allmedicines')
+            return redirect('/allmedicines/')
 
         else:
             form = MedicineData()
@@ -892,14 +950,45 @@ def EditEmployee(request, id):
             }
             return render(request, 'app/edit-employee.html', context)
     else:
-        form_user = CreateEmployee()
-        form_data = EmployeeData()
-        context = {
-            'form_user':form_user,
-            'form_data':form_data,
-            'id':id
-        }
-        return render(request, 'app/edit-employee.html', context)
+        if request.session["is_admin"]:
+            form_user = CreateEmployee()
+            form_data = EmployeeData()
+            context = {
+                'form_user':form_user,
+                'form_data':form_data,
+                'id':id
+            }
+            return render(request, 'app/edit-employee.html', context)
+        else:
+            context = {
+                'err': "Only admins can access this page"
+            }
+            return render(request, 'app/edit-employee.html', context)
 
 
-        
+
+def generatebill_pdf(request):
+    """Generate pdf."""
+    # Model data
+    bill = Bill.objects.all()
+    sales = Sales.objects.all()
+
+    i =len(bill)-1
+    
+
+    # Rendered
+    html_string = render_to_string('pdf/billpdf.html', {'sales': sales , 'bill':bill,'i':i})
+    html = HTML(string=html_string)
+    result = html.write_pdf()
+
+    # Creating http response
+    response = HttpResponse(content_type='application/pdf;')
+    response['Content-Disposition'] = 'inline; filename=list_bill.pdf'
+    response['Content-Transfer-Encoding'] = 'binary'
+    with tempfile.NamedTemporaryFile(delete=True) as output:
+        output.write(result)
+        output.flush()
+        output = open(output.name, 'rb')
+        response.write(output.read())
+
+    return response
