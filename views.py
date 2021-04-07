@@ -1,5 +1,5 @@
 from django.shortcuts import render, redirect
-from .forms import CreateEmployee, EmployeeData, MedicineData, VendorData, StockData,SalesData,SalesDataSet,RevenueProfit, StockDataSet
+from .forms import CreateEmployee, EmployeeData, MedicineData, VendorData, StockData,StockDataSet,SalesData,SalesDataSet,RevenueProfit
 from .models import Employee, ExpiredMedicines, Medicine, MedicineStock, Sales, Vendor, MedicineToVendor, Stock,Bill
 from django.contrib.auth.models import User
 from django.contrib.auth import authenticate, login, logout
@@ -27,7 +27,7 @@ def HomePage(request):
 
 
 
-
+@login_required(login_url='/login/', redirect_field_name=None)
 def CreateUser(request):
     # form_user = forms.CreateEmployee()
     # form_data = forms.EmployeeData()
@@ -93,6 +93,7 @@ def CreateUser(request):
             }
             return render(request, 'app/create-user.html', context)
 
+@login_required(login_url='/login/', redirect_field_name=None)
 def CreateMedicine(request):
     if request.method != 'POST':
         form_med = MedicineData()
@@ -142,6 +143,7 @@ def CreateMedicine(request):
             }
             return render(request, 'app/create-medicine.html', context)
 
+@login_required(login_url='/login/', redirect_field_name=None)
 def CreateVendor(request):
     if request.method != 'POST':
         form_ven = VendorData()
@@ -205,6 +207,7 @@ def CreateVendor(request):
             }
             return render(request, 'app/create-vendor.html', context)
 
+@login_required(login_url='/login/', redirect_field_name=None)
 def AddStock(request):
     if request.method != 'POST':
         form_stock = StockData(None)
@@ -225,25 +228,26 @@ def AddStock(request):
                 batch_id = formstock.cleaned_data['batch_id']
                 quantity = formstock.cleaned_data['quantity']
                 expiry_date = formstock.cleaned_data['expiry_date']
+                vendor_id = formstock.cleaned_data['vendor_id']
 
-                try:
-                    Medicine.objects.get(medicine_id=medicine_id)
-                except:
-                    form_stock = StockData()
-                    formset = StockDataSet()
-                    err = medicine_id + " is not valid"
-                    context ={
-                    'form_stock': form_stock,
-                    'formset' : formset,
-                    'err': err
-                    }
-                    return render(request, 'app/add-stock.html', context)
+                #try:
+                 #   Medicine.objects.get(medicine_id=medicine_id)
+                #except:
+                 #   form_stock = StockData()
+                  #  formset = StockDataSet()
+                   # err = medicine_id + " is not valid"
+                #    context ={
+                 #   'form_stock': form_stock,
+                  #  'formset' : formset,
+                  #  'err': err
+                   # }
+                   # return render(request, 'app/add-stock.html', context)
 
                 s = Stock(medicine_id=medicine_id, batch_id=batch_id, quantity=quantity, expiry_date=expiry_date , vendor_id = vendor_id)
                 s.save()
             
             form_stock = StockData()
-            formset = StockDataSet()
+            formset = StockDataSet(queryset=Stock.objects.none())
             context ={
             'form_stock': form_stock,
             'formset' : formset,
@@ -256,9 +260,9 @@ def AddStock(request):
                 'form_stock': form_stock,
                 'err': err
             }
-            return render(request, 'app/add-stock1.html', context)
+            return render(request, 'app/add-stock.html', context)
 
-
+@login_required(login_url='/login/', redirect_field_name=None)
 def TableMedicines(request):
     medicines = Medicine.objects.all()
     context = {
@@ -266,6 +270,7 @@ def TableMedicines(request):
     }
     return render(request, 'app/all-medicines.html', context)
 
+@login_required(login_url='/login/', redirect_field_name=None)
 def TableVendors(request):
     vendors = Vendor.objects.all()
     context = {
@@ -273,6 +278,7 @@ def TableVendors(request):
     }
     return render(request, 'app/all-vendors.html', context)
 
+@login_required(login_url='/login/', redirect_field_name=None)
 def TableEmployees(request):
     employees = Employee.objects.all()
     context = {
@@ -281,8 +287,7 @@ def TableEmployees(request):
     return render(request, 'app/all-employees.html', context)
 
 
-
-    
+@login_required(login_url='/login/', redirect_field_name=None)   
 def TableExpired(request):
     all_stock = Stock.objects.all()
     today = datetime.date.today()
@@ -307,7 +312,7 @@ def TableExpired(request):
                 'ven_email':ven_email,
                 'ven_address':ven_address
             })
-            e = ExpiredMedicines(medicine_id = med_id, quantity = stock.quantity)
+            e = ExpiredMedicines(medicine_id = med_id, quantity = stock.quantity, expiry_date=stock.expiry_date)
             e.save()
     
     context = {
@@ -315,6 +320,7 @@ def TableExpired(request):
     }
     return render(request, 'app/expired-medicines.html', context)
 
+@login_required(login_url='/login/', redirect_field_name=None)
 def TablePurchase(request):
     all_meds_stock = MedicineStock.objects.all()
     
@@ -326,20 +332,21 @@ def TablePurchase(request):
             stock = med.stock
             threshold = med.threshold
             v = MedicineToVendor.objects.filter(medicine_id=med_id).first()
-            ven_id = v.vendor_id
-            v_info = Vendor(vendor_id=ven_id)
-            number = v_info.number
-            email = v_info.email
-            address = v_info.address
-            purchase.append({
-                'med_id':med_id,
-                'stock':stock,
-                'threshold':threshold,
-                'ven_id':ven_id,
-                'number':number,
-                'email':email,
-                'address':address
-            })
+            if v != None:
+                ven_id = v.vendor_id
+                v_info = Vendor.objects.get(vendor_id=ven_id)
+                number = v_info.mobile
+                email = v_info.email
+                address = v_info.address
+                purchase.append({
+                    'med_id':med_id,
+                    'stock':stock,
+                    'threshold':threshold,
+                    'ven_id':ven_id,
+                    'number':number,
+                    'email':email,
+                    'address':address
+                })
 
     context = {
         'purchase':purchase
@@ -347,11 +354,13 @@ def TablePurchase(request):
 
     return render(request, 'app/purchase-table.html', context)
 
+@login_required(login_url='/login/', redirect_field_name=None)
 def RevenueProfitView(request):
     if request.method == 'POST':
         form = RevenueProfit(request.POST)
-        from_date = form.cleaned_data['from_date']
-        to_date = form.cleaned_data['to_date']
+        if  form.is_valid():
+            from_date = form.cleaned_data['from_date']
+            to_date = form.cleaned_data['to_date']
 
         if to_date <= from_date:
             context={
@@ -598,6 +607,7 @@ def EmployeeLogin(request):
 
 
 
+@login_required(login_url='/login/', redirect_field_name=None)
 def Selling(request):
     template = 'app/sales.html'
 
@@ -638,16 +648,55 @@ def Selling(request):
                     }
                     return render(request, 'app/sales.html', context)
                 
+                allstock = Stock.objects.all()
+                tquantity = 0
+
+                for stocks in allstock:
+                    if ( stocks.medicine_id == medicine_id):
+                        tquantity = tquantity + stocks.quantity
+                    
+                if( tquantity >= quantity):
+                    pass
+
+                            
+                else:
+                    form_sale = SalesDataSet()
+                    context={
+                        'formsale' : formsale,
+                        'form_sale':form_sale,
+                        'err': "Medicine_id "+medicine_id+" is out of stock"
+                    }
+                    return render(request, 'app/sales.html', context)
+                
+                
+                #stock = Stock.objects.get(medicine_id=medicine_id)
+                req_quantity = quantity
+                allstock = Stock.objects.all()
+
+                for stocks in allstock:
+                    if ( stocks.medicine_id == medicine_id):
+                        if(req_quantity > 0):
+                            if(req_quantity >= stocks.quantity):
+                                req_quantity = req_quantity - stocks.quantity
+                                stocks.quantity = 0
+                                stocks.delete()
+                            else:
+                                stocks.quantity = stocks.quantity - req_quantity
+                                req_quantity = 0
+                                stocks.save()
+
+
                 f1 = []
                 f = Sales(medicine_id=medicine_id ,quantity = quantity,date =date)
-                f.save()
+                #f.save()
                 f1.append(f)
+                
                 med = Medicine.objects.get(medicine_id=medicine_id)
                 sub = quantity * med.unit_sell_price
                 sell_price = sell_price + quantity * med.unit_sell_price
-                #stock = Stock.objects.get(medicine_id=medicine_id)
-                #stock.quantity = stock.quantity - quantity
-                #stock.save()
+
+
+                
                 
                 form_med.append(med.generic_name)
                 form_medid.append(medicine_id)
@@ -665,7 +714,7 @@ def Selling(request):
                 #'Sales': f1,
                 'Bill' : b,             
             }
-            return render(request,'app/bill.html', context)
+            return render(request,'app/bill.html' , context)
 
         else:
             formsale = SalesData()
@@ -679,6 +728,7 @@ def Selling(request):
             }
             return render(request, 'app/sales.html', context)
 
+@login_required(login_url='/login/', redirect_field_name=None)
 def ViewSales(request):
     sales = Sales.objects.all()
     context = {
@@ -707,7 +757,7 @@ def generatesales_pdf(request):
 
     return response
 
-
+@login_required(login_url='/login/', redirect_field_name=None)
 def EditMedicine(request, id):
     if request.method == 'POST':
         form = MedicineData(request.POST)
@@ -724,7 +774,7 @@ def EditMedicine(request, id):
             m.unit_purchase_price = unit_purchase_price
             m.save()
 
-            return redirect('/app/allmedicines')
+            return redirect('/allmedicines')
 
         else:
             form = MedicineData()
@@ -742,6 +792,7 @@ def EditMedicine(request, id):
         }
         return render(request, 'app/edit-medicine.html', context)
 
+@login_required(login_url='/login/', redirect_field_name=None)
 def EditVendor(request, id):
     if request.method == 'POST':
         form = VendorData(request.POST)
@@ -779,7 +830,7 @@ def EditVendor(request, id):
                 k = MedicineToVendor(medicine_id=m,vendor_id=id)
                 k.save()
 
-            return redirect('/app/allvendors')
+            return redirect('/allvendors')
 
         else:
             form = VendorData()
@@ -797,6 +848,7 @@ def EditVendor(request, id):
         }
         return render(request, 'app/edit-vendor.html', context)
 
+@login_required(login_url='/login/', redirect_field_name=None)
 def EditEmployee(request, id):
     if request.method == 'POST':
         user_form = CreateEmployee(request.POST)
@@ -825,7 +877,7 @@ def EditEmployee(request, id):
             e = Employee(user=u, first_name=first_name, middle_name=middle_name, last_name=last_name, date_of_birth=date_of_birth,
                         gender=gender, phone=phone, address=address, is_admin=is_admin, password=password, confirm_password=confirm_password)
             e.save()
-            return redirect('/app/allemployees') 
+            return redirect('/allemployees') 
         else:
             form_user = CreateEmployee()
             form_data = EmployeeData()
