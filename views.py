@@ -41,19 +41,19 @@ def CreateUser(request):
     # }
     # return render(request, 'registration/create-user.html', context)
     if request.method != 'POST':
-        if request.session["is_admin"]:
-            form_user = CreateEmployee()
-            form_data = EmployeeData()
-            context = {
-                'form_data': form_data,
-                'form_user': form_user
-            }
-            return render(request, 'app/create-user.html', context)
-        else:
+        '''if request.session["is_admin"]:'''
+        form_user = CreateEmployee()
+        form_data = EmployeeData()
+        context = {
+            'form_data': form_data,
+            'form_user': form_user
+        }
+        return render(request, 'app/create-user.html', context)
+        '''else:
             context = {
                 'err': "Only admins can access this page"
             }
-            return render(request, 'registration/create-user.html', context)
+            return render(request, 'registration/create-user.html', context)'''
     else:
         user_form = CreateEmployee(request.POST)
         employee_data_form = EmployeeData(request.POST)
@@ -491,7 +491,7 @@ def generatemed_pdf(request):
     with tempfile.NamedTemporaryFile(delete=True) as output:
         output.write(result)
         output.flush()
-        output = open(output.name, 'rb')
+        output.seek(0)
         response.write(output.read())
 
     return response
@@ -513,7 +513,7 @@ def generateven_pdf(request):
     with tempfile.NamedTemporaryFile(delete=True) as output:
         output.write(result)
         output.flush()
-        output = open(output.name, 'rb')
+        output.seek(0)
         response.write(output.read())
 
     return response
@@ -535,7 +535,7 @@ def generateemp_pdf(request):
     with tempfile.NamedTemporaryFile(delete=True) as output:
         output.write(result)
         output.flush()
-        output = open(output.name, 'rb')
+        output.seek(0)
         response.write(output.read())
 
     return response
@@ -580,7 +580,7 @@ def generateexpiredmed_pdf(request):
     with tempfile.NamedTemporaryFile(delete=True) as output:
         output.write(result)
         output.flush()
-        output = open(output.name, 'rb')
+        output.seek(0)
         response.write(output.read())
 
     return response
@@ -628,7 +628,7 @@ def generatepurchasetable_pdf(request):
     with tempfile.NamedTemporaryFile(delete=True) as output:
         output.write(result)
         output.flush()
-        output = open(output.name, 'rb')
+        output.seek(0)
         response.write(output.read())
 
     return response
@@ -714,13 +714,17 @@ def Selling(request):
                     }
                     return render(request, 'app/sales.html', context)
                 
-                stock = Stock.objects.get(medicine_id=medicine_id)
-                if( stock.quantity >= quantity):
+                allstock = Stock.objects.all()
+                tquantity = 0
+
+                for stocks in allstock:
+                    if ( stocks.medicine_id == medicine_id):
+                        tquantity = tquantity + stocks.quantity
+                    
+                if( tquantity >= quantity):
                     pass
 
-                    
-                   
-                        
+                            
                 else:
                     form_sale = SalesDataSet()
                     context={
@@ -730,10 +734,21 @@ def Selling(request):
                     }
                     return render(request, 'app/sales.html', context)
                 
-                
-                #stock = Stock.objects.get(medicine_id=medicine_id)
-                stock.quantity = stock.quantity - quantity
-                stock.save()
+                req_quantity = quantity
+                allstock = Stock.objects.all()
+
+                for stocks in allstock:
+                    if ( stocks.medicine_id == medicine_id):
+                        if(req_quantity > 0):
+                            if(req_quantity >= stocks.quantity):
+                                req_quantity = req_quantity - stocks.quantity
+                                stocks.quantity = 0
+                                stocks.delete()
+                            else:
+                                stocks.quantity = stocks.quantity - req_quantity
+                                req_quantity = 0
+                                stocks.save()
+
 
 
                 f1 = []
@@ -810,7 +825,7 @@ def generatesales_pdf(request):
     with tempfile.NamedTemporaryFile(delete=True) as output:
         output.write(result)
         output.flush()
-        output = open(output.name, 'rb')
+        output.seek(0)
         response.write(output.read())
 
     return response
@@ -988,7 +1003,7 @@ def generatebill_pdf(request):
     with tempfile.NamedTemporaryFile(delete=True) as output:
         output.write(result)
         output.flush()
-        output = open(output.name, 'rb')
+        output.seek(0)
         response.write(output.read())
 
     return response
